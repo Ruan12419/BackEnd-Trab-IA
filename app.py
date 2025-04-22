@@ -1,0 +1,155 @@
+from flask import Flask, jsonify, send_from_directory, Response, request
+import requests
+from datetime import datetime
+import os
+from treino import treinar_e_exportar_modelo
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+import joblib
+import pandas as pd
+from utils.db import SessionLocal, Predicao
+
+app = Flask(__name__)
+
+# Caminho para o modelo
+caminho_modelo = 'modelo/modelo_final.pkl'
+
+# Verifica se o modelo existe
+if not os.path.exists(caminho_modelo):
+    print("Modelo não encontrado. Criando modelo...")
+    treinar_e_exportar_modelo()
+
+# Carrega o modelo
+modelo = joblib.load(caminho_modelo)
+
+# Rota para predição
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+
+    # Converte o JSON para DataFrame
+    df = pd.DataFrame([data])
+
+    # Utiliza a variável global carregada anteriormente
+    global modelo
+
+    # Define as colunas usadas no treino
+    colunas_usadas_no_modelo = ['StudyTimeWeekly', 'Absences', 'ParentalEducation', 'Ethnicity', 'Gender', 'Tutoring', 'ParentalSupport', 'Extracurricular', 'Volunteering']
+    
+    campos_esperados = colunas_usadas_no_modelo + ['StudentID', 'Age', 'Extracurricular', 'Sports', 'Music', 'Volunteering', 'GPA']
+    for campo in campos_esperados:
+        if campo not in data:
+            return jsonify({"error": f"Campo obrigatório ausente: {campo}"}), 400
+
+
+    # Filtra apenas as colunas esperadas pelo modelo
+    df_model_input = df[colunas_usadas_no_modelo]
+    print(df_model_input)
+
+    # Prever a classe e mostra a probabilidade
+    prediction = modelo.predict(df_model_input)[0]
+    print(prediction)
+    prediction = int(prediction)
+    proba = modelo.predict_proba(df_model_input)
+    print("Probabilidades:", proba)
+
+
+    # Salvar no banco de dados
+    db = SessionLocal()
+    nova_predicao = Predicao(
+        student_id=data.get('StudentID'),
+        age=data.get('Age'),
+        gender=data.get('Gender'),
+        ethnicity=data.get('Ethnicity'),
+        parental_education=data.get('ParentalEducation'),
+        study_time_weekly=data.get('StudyTimeWeekly'),
+        absences=data.get('Absences'),
+        tutoring=data.get('Tutoring'),
+        parental_support=data.get('ParentalSupport'),
+        extracurricular=data.get('Extracurricular'),
+        sports=data.get('Sports'),
+        music=data.get('Music'),
+        volunteering=data.get('Volunteering'),
+        predicted_grade=str(prediction)
+    )
+
+    db.add(nova_predicao)
+    db.commit()
+    db.close()
+
+    return jsonify({
+        "GradeClass predito": int(prediction),
+        "confiança": round(float(max(proba[0])) * 100, 2)
+    })
+
+
+
+# Rota para consultar todas as predições
+@app.route('/predicoes', methods=['GET'])
+def listar_predicoes():
+    db = SessionLocal()
+    resultados = db.query(Predicao).all()
+    db.close()
+
+    return jsonify([{
+        'student_id': r.student_id,
+        'predicted_grade': r.predicted_grade,
+        'study_time_weekly': r.study_time_weekly,
+        'absences': r.absences
+    } for r in resultados])
+
+
+# Rota para gerar relatório de estatísticas das predições
+@app.route('/relatorio_predicoes', methods=['GET'])
+def gerar_relatorio_predicoes():
+    db = SessionLocal()
+    resultados = db.query(Predicao).all()
+    db.close()
+
+    # Criar um DataFrame a partir dos resultados
+    df = pd.DataFrame([{
+        'student_id': r.student_id,
+        'predicted_grade': r.predicted_grade,
+        'study_time_weekly': r.study_time_weekly,
+        'absences': r.absences
+    } for r in resultados])
+
+    # Calcular as estatísticas desejadas
+    relatorio = {
+        'total_predicoes': len(df),
+        'media_predicoes': df['predicted_grade'].astype(float).mean(),
+        'desvio_padrao_predicoes': df['predicted_grade'].astype(float).std(),
+        'distribuicao_predicoes': df['predicted_grade'].value_counts().to_dict(),
+    }
+
+    # Converter o relatório em DataFrame e salvar em CSV
+    relatorio_df = pd.DataFrame([relatorio])
+    if not os.path.exists('relatorios'):
+        os.makedirs('relatorios')
+
+    relatorio_df.to_csv('relatorios/relatorio_predicoes.csv', index=False)
+
+    # Retornar o caminho do arquivo gerado
+    return jsonify({'message': 'Relatório gerado com sucesso!', 'file': 'relatorios/relatorio_predicoes.csv'})
+
+
+# Rota para baixar o relatório
+@app.route('/download_relatorio', methods=['GET'])
+def download_relatorio():
+    return send_from_directory(directory='relatorios', path='relatorio_predicoes.csv', as_attachment=True)
+
+
+@app.route("/cria", methods=["GET"])
+def cria_modelo():
+    mensagem = treinar_e_exportar_modelo()
+
+    return mensagem
+
+
+@app.route('/', methods=['GET'])
+def trending_cards_usage():
+    return send_from_directory("templates", "index.html")
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)

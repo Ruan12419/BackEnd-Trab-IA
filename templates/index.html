@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Predição de Desempenho Acadêmico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../static/script.js"></script>
+</head>
+
+<body>
+
+    <header>
+        <h1>Predição de Desempenho Acadêmico</h1>
+    </header>
+
+    <nav>
+        <button id="btnFormulario" onclick="mostrarTela('formulario')">Formulário</button>
+        <button id="btnDashboard" class="disabled" onclick="mostrarTela('dashboard')">Dashboard</button>
+    </nav>
+
+    <div id="formulario" class="container active">
+        <h2>Enviar Dados do Aluno</h2>
+        <form onsubmit="event.preventDefault(); enviarDados();">
+            <label>ID do Aluno:</label>
+            <input type="number" id="studentID" required>
+
+            <label>Idade:</label>
+            <input type="number" id="age" required>
+
+            <label>Gênero:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="gender" value="0" required> Masculino</label>
+                <label><input type="radio" name="gender" value="1"> Feminino</label>
+            </div>
+
+            <label>Etnia:</label>
+            <select id="ethnicity" required>
+                <option value="0">Branco</option>
+                <option value="1">Negro</option>
+                <option value="2">Pardo</option>
+                <option value="3">Outro</option>
+            </select>
+
+            <label>Educação dos Pais:</label>
+            <select id="parentalEducation" required>
+                <option value="0">Nenhum</option>
+                <option value="1">Ensino Médio</option>
+                <option value="2">Superior</option>
+                <option value="3">Pós</option>
+                <option value="4">Mestrado</option>
+            </select>
+
+            <label>Horas de Estudo por Semana:</label>
+            <input type="number" step="0.1" id="studyTimeWeekly" required>
+
+            <label>Faltas:</label>
+            <input type="number" id="absences" required>
+
+            <label>Recebe Tutoria?</label>
+            <div class="radio-group">
+                <label><input type="radio" name="tutoring" value="0" required> Não</label>
+                <label><input type="radio" name="tutoring" value="1"> Sim</label>
+            </div>
+
+            <label>Apoio dos Pais:</label>
+            <select id="parentalSupport" required>
+                <option value="0">Nenhum</option>
+                <option value="1">Pouco</option>
+                <option value="2">Muito</option>
+                <option value="3">Total</option>
+                <option value="4">Máximo</option>
+            </select>
+
+            <label>Atividades Extracurriculares:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="extracurricular" value="0" required> Não</label>
+                <label><input type="radio" name="extracurricular" value="1"> Sim</label>
+            </div>
+
+            <label>Esportes:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="sports" value="0" required> Não</label>
+                <label><input type="radio" name="sports" value="1"> Sim</label>
+            </div>
+
+            <label>Música:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="music" value="0" required> Não</label>
+                <label><input type="radio" name="music" value="1"> Sim</label>
+            </div>
+
+            <label>Voluntariado:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="volunteering" value="0" required> Não</label>
+                <label><input type="radio" name="volunteering" value="1"> Sim</label>
+            </div>
+
+            <label>GPA Atual:</label>
+            <input type="number" step="0.01" id="gpa" required>
+
+            <button type="submit">Enviar Dados</button>
+        </form>
+
+        <div id="resultado">
+            <p id="p-resultado"></p>
+        </div>
+    </div>
+
+    <div id="dashboard" class="container">
+        <div id="buttons">
+            <button id="btnGerarRelatorio" onclick="gerarRelatorio()">Gerar Relatório</button>
+            <button id="btnBaixarRelatorio" class="disabled" onclick="baixarRelatorio()">Baixar Relatório</button>
+        </div>
+        <h2>Dashboard de Predições</h2>
+
+        <canvas id="graficoDistribuicao" height="100"></canvas>
+
+        <h3>Estatísticas dos Dados Armazenados</h3>
+        <div class="stats" id="estatisticas"></div>
+
+        <h3>Gráfico: Tempo de Estudo vs Faltas</h3>
+        <canvas id="graficoEstudoVsFaltas" height="200"></canvas>
+
+        <h3>Gráfico: Dispersão das Predições de Nota</h3>
+        <canvas id="graficoPredicaoNotas" height="200"></canvas>
+    </div>
+</body>
+
+</html>
