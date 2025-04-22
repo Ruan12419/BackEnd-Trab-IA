@@ -1,4 +1,3 @@
 __pychache__
 /relatorios
-db.cpython-312.pyc
-treino.cpython-312.pyc
+*.cpython-312*.pyc
