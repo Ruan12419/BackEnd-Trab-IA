@@ -16,21 +16,71 @@ function mostrarTela(tela) {
 }
 
 function enviarDados() {
+    const idade = parseInt(document.getElementById('age').value);
+    const studyTime = parseFloat(document.getElementById('studyTimeWeekly').value);
+    const absences = parseInt(document.getElementById('absences').value);
+    const gpa = parseFloat(document.getElementById('gpa').value);
+
+    const camposObrigatorios = [
+        { id: 'studentID', nome: 'ID do Aluno' },
+        { id: 'age', nome: 'Idade' },
+        { id: 'ethnicity', nome: 'Etnia' },
+        { id: 'parentalEducation', nome: 'Educação dos Pais' },
+        { id: 'studyTimeWeekly', nome: 'Horas de Estudo por Semana' },
+        { id: 'absences', nome: 'Número de Faltas' },
+        { id: 'parentalSupport', nome: 'Apoio dos Pais' },
+        { id: 'gpa', nome: 'GPA' }
+    ];
+
+    for (const campo of camposObrigatorios) {
+        const valor = document.getElementById(campo.id).value;
+        if (!valor || valor.trim() === "") {
+            alert(`Preencha o campo obrigatório: ${campo.nome}`);
+            return;
+        }
+    }
+
+    // Radios obrigatórios (com valor 0 ou 1)
+    const radiosObrigatorios = [
+        { nome: 'gender', label: 'Gênero' },
+        { nome: 'tutoring', label: 'Reforço Escolar' },
+        { nome: 'extracurricular', label: 'Atividades Extracurriculares' },
+        { nome: 'sports', label: 'Esportes' },
+        { nome: 'music', label: 'Música' },
+        { nome: 'volunteering', label: 'Voluntariado' }
+    ];
+
+    for (const radio of radiosObrigatorios) {
+        if (!document.querySelector(`input[name="${radio.nome}"]:checked`)) {
+            alert(`Selecione uma opção para: ${radio.label}`);
+            return;
+        }
+    }
+
+    if (idade < 5 || idade > 100) {
+        alert("Idade deve estar entre 5 e 100 anos.");
+        return;
+    }
+    if (isNaN(gpa) || gpa < 0 || gpa > 10) {
+        alert("GPA deve estar entre 0.0 e 10.0.");
+        return;
+    }
+
     const dadosAluno = {
-        "StudentID": document.getElementById('studentID').value,
-        "Age": document.getElementById('age').value,
-        "Gender": document.querySelector('input[name="gender"]:checked').value,
+        "StudentID": document.getElementById('studentID').value.trim(),
+        "Age": idade,
+        "Gender": parseInt(document.querySelector('input[name="gender"]:checked').value),
         "Ethnicity": document.getElementById('ethnicity').value,
         "ParentalEducation": document.getElementById('parentalEducation').value,
-        "StudyTimeWeekly": document.getElementById('studyTimeWeekly').value,
-        "Absences": document.getElementById('absences').value,
-        "Tutoring": document.querySelector('input[name="tutoring"]:checked').value,
-        "ParentalSupport": document.getElementById('parentalSupport').value,
-        "Extracurricular": document.querySelector('input[name="extracurricular"]:checked').value,
-        "Sports": document.querySelector('input[name="sports"]:checked').value,
-        "Music": document.querySelector('input[name="music"]:checked').value,
-        "Volunteering": document.querySelector('input[name="volunteering"]:checked').value,
-        "GPA": document.getElementById('gpa').value
+        "StudyTimeWeekly": studyTime,
+        "Absences": absences,
+        "Tutoring": parseInt(document.querySelector('input[name="tutoring"]:checked').value),
+        "ParentalSupport": parseInt(document.getElementById('parentalSupport').value),
+        "Extracurricular": parseInt(document.querySelector('input[name="extracurricular"]:checked').value),
+        "Sports": parseInt(document.querySelector('input[name="sports"]:checked').value),
+        "Music": parseInt(document.querySelector('input[name="music"]:checked').value),
+        "Volunteering": parseInt(document.querySelector('input[name="volunteering"]:checked').value),
+        "GPA": gpa
     };
 
     fetch('http://192.168.0.17:5000/predict', {
@@ -38,15 +88,20 @@ function enviarDados() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosAluno)
     })
-        .then(response => response.json())
-        .then(data => {
-            let paragrafo = document.querySelector("#p-resultado")
-            paragrafo.innerHTML = "Predição: GRAU " + data["GradeClass predito"] + " (" + data["confiança"] + "% de confiança)"
-        })
-        .catch(error => {
-            alert("Erro ao enviar os dados");
-            console.error(error);
-        });
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert("Erro: " + data.error);
+        } else {
+            document.querySelector("#p-resultado").innerHTML =
+                "Predição: GRAU " + data["GradeClass predito"] +
+                " (" + data["confiança"] + "% de confiança)";
+        }
+    })
+    .catch(error => {
+        alert("Erro ao enviar os dados");
+        console.error(error);
+    });
 }
 
 async function gerarRelatorio() {

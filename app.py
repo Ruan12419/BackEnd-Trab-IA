@@ -27,61 +27,70 @@ modelo = joblib.load(caminho_modelo)
 def predict():
     data = request.get_json()
 
-    # Converte o JSON para DataFrame
-    df = pd.DataFrame([data])
+    # Lista de campos obrigatórios
+    campos_esperados = [
+        'StudentID', 'Age', 'Gender', 'Ethnicity', 'ParentalEducation',
+        'StudyTimeWeekly', 'Absences', 'Tutoring', 'ParentalSupport',
+        'Extracurricular', 'Sports', 'Music', 'Volunteering', 'GPA'
+    ]
 
-    # Utiliza a variável global carregada anteriormente
-    global modelo
-
-    # Define as colunas usadas no treino
-    colunas_usadas_no_modelo = ['StudyTimeWeekly', 'Absences', 'ParentalEducation', 'Ethnicity', 'Gender', 'Tutoring', 'ParentalSupport', 'Extracurricular', 'Volunteering']
-    
-    campos_esperados = colunas_usadas_no_modelo + ['StudentID', 'Age', 'Extracurricular', 'Sports', 'Music', 'Volunteering', 'GPA']
     for campo in campos_esperados:
         if campo not in data:
             return jsonify({"error": f"Campo obrigatório ausente: {campo}"}), 400
 
+    # Validações de valor
+    idade = int(data['Age'])
+    if idade < 5 or idade > 100:
+        return jsonify({"error": "Idade fora dos limites permitidos (5 a 100)."}), 400
 
-    # Filtra apenas as colunas esperadas pelo modelo
-    df_model_input = df[colunas_usadas_no_modelo]
-    print(df_model_input)
+    gpa = float(data['GPA'])
+    if gpa < 0 or gpa > 10:
+        return jsonify({"error": "GPA fora dos limites permitidos (0.0 a 10.0)."}), 400
 
-    # Prever a classe e mostra a probabilidade
-    prediction = modelo.predict(df_model_input)[0]
-    print(prediction)
-    prediction = int(prediction)
+    booleanos = ['Tutoring', 'Extracurricular', 'Sports', 'Music', 'Volunteering']
+    for campo in booleanos:
+        if data[campo] not in [0, 1]:
+            return jsonify({"error": f"O campo '{campo}' deve conter 0 ou 1."}), 400
+
+    if data["ParentalSupport"] not in [0, 1, 2, 3, 4]:
+        return jsonify({"error": f"O campo '{data["ParentalSupport"]}' deve conter 0 ou 4."}), 400
+
+    # Prepara entrada para o modelo
+    colunas_usadas_no_modelo = [
+        'StudyTimeWeekly', 'Absences', 'ParentalEducation', 'Ethnicity',
+        'Gender', 'Tutoring', 'ParentalSupport', 'Extracurricular', 'Volunteering'
+    ]
+    df_model_input = pd.DataFrame([data])[colunas_usadas_no_modelo]
+
+    prediction = int(modelo.predict(df_model_input)[0])
     proba = modelo.predict_proba(df_model_input)
-    print("Probabilidades:", proba)
 
-
-    # Salvar no banco de dados
+    # Armazena no banco
     db = SessionLocal()
     nova_predicao = Predicao(
-        student_id=data.get('StudentID'),
-        age=data.get('Age'),
-        gender=data.get('Gender'),
-        ethnicity=data.get('Ethnicity'),
-        parental_education=data.get('ParentalEducation'),
-        study_time_weekly=data.get('StudyTimeWeekly'),
-        absences=data.get('Absences'),
-        tutoring=data.get('Tutoring'),
-        parental_support=data.get('ParentalSupport'),
-        extracurricular=data.get('Extracurricular'),
-        sports=data.get('Sports'),
-        music=data.get('Music'),
-        volunteering=data.get('Volunteering'),
+        student_id=data['StudentID'],
+        age=idade,
+        gender=data['Gender'],
+        ethnicity=data['Ethnicity'],
+        parental_education=data['ParentalEducation'],
+        study_time_weekly=data['StudyTimeWeekly'],
+        absences=data['Absences'],
+        tutoring=data['Tutoring'],
+        parental_support=data['ParentalSupport'],
+        extracurricular=data['Extracurricular'],
+        sports=data['Sports'],
+        music=data['Music'],
+        volunteering=data['Volunteering'],
         predicted_grade=str(prediction)
     )
-
     db.add(nova_predicao)
     db.commit()
     db.close()
 
     return jsonify({
-        "GradeClass predito": int(prediction),
+        "GradeClass predito": prediction,
         "confiança": round(float(max(proba[0])) * 100, 2)
     })
-
 
 
 # Rota para consultar todas as predições
